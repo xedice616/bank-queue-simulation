@@ -217,6 +217,13 @@ Every simulation re-seeds Python's random generator before it runs, so the same
 parameters and seed always produce identical results. This allows fair
 comparison between different counter counts at the same arrival probability.
 
+
+
+# Bank Queue Simulation
+
+[🌐 Live Demo](https://your-render-url.onrender.com)
+
+
 ---
 
 ## License
