@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bank Queue Simulation</title>
+  <meta name="description" content="Discrete-event simulation of a bank queue with configurable counters and arrival probability.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <div class="brand-text">
+          <h1>Bank Queue Simulation</h1>
+          <p class="brand-sub">Discrete-event analysis of waiting times across counters and arrival rates</p>
+        </div>
+      </div>
+      <div class="conn" id="conn" role="status" aria-live="polite">
+        <span class="conn-dot" id="connDot" data-state="pending"></span>
+        <span class="conn-label" id="connLabel">Checking API&hellip;</span>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" class="wrap">
+
+    <!-- B. Overview / key metrics -->
+    <section class="panel" aria-labelledby="overview-h">
+      <div class="panel-head">
+        <h2 id="overview-h">Key metrics</h2>
+        <p class="panel-note" id="metricsSource">Run a simulation to populate these figures.</p>
+      </div>
+      <div class="metrics" id="metrics">
+        <div class="metric"><span class="metric-label">Customers arrived</span><span class="metric-value" id="mArrived">&mdash;</span></div>
+        <div class="metric"><span class="metric-label">Customers served</span><span class="metric-value" id="mServed">&mdash;</span></div>
+        <div class="metric"><span class="metric-label">Avg waiting time</span><span class="metric-value" id="mWait">&mdash;</span><span class="metric-unit">minutes</span></div>
+        <div class="metric"><span class="metric-label">Max queue length</span><span class="metric-value" id="mMaxQ">&mdash;</span></div>
+        <div class="metric"><span class="metric-label">Remaining at close</span><span class="metric-value" id="mRemain">&mdash;</span></div>
+      </div>
+    </section>
+
+    <div class="grid-2">
+      <!-- C. Simulation configuration -->
+      <section class="panel" aria-labelledby="config-h">
+        <div class="panel-head">
+          <h2 id="config-h">Run a simulation</h2>
+          <p class="panel-note">Configure the parameters and run a single 8-hour trading day.</p>
+        </div>
+        <form id="simForm" novalidate>
+          <div class="field">
+            <label for="inK">Number of counters (k)</label>
+            <input type="number" id="inK" name="k" min="1" max="50" step="1" value="2" inputmode="numeric" required>
+            <small class="field-hint">Service points open. Positive integer.</small>
+            <small class="field-error" id="errK" role="alert"></small>
+          </div>
+          <div class="field">
+            <label for="inP">Arrival probability (p)</label>
+            <input type="number" id="inP" name="p" min="0" max="1" step="0.05" value="0.3" inputmode="decimal" required>
+            <small class="field-hint">Chance a customer arrives each minute. 0 to 1.</small>
+            <small class="field-error" id="errP" role="alert"></small>
+          </div>
+          <div class="field">
+            <label for="inTime">Simulation duration (minutes)</label>
+            <input type="number" id="inTime" name="simulation_time" min="1" max="100000" step="1" value="480" inputmode="numeric" required>
+            <small class="field-hint">Default 480 = one 8-hour day.</small>
+            <small class="field-error" id="errTime" role="alert"></small>
+          </div>
+          <div class="field">
+            <label for="inSeed">Random seed</label>
+            <input type="number" id="inSeed" name="seed" step="1" value="42" inputmode="numeric" required>
+            <small class="field-hint">Same seed reproduces the same run.</small>
+            <small class="field-error" id="errSeed" role="alert"></small>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary" id="runBtn">Run simulation</button>
+            <span class="form-status" id="simStatus" role="status" aria-live="polite"></span>
+          </div>
+        </form>
+      </section>
+
+      <!-- F. Minimum counter analysis -->
+      <section class="panel" aria-labelledby="min-h">
+        <div class="panel-head">
+          <h2 id="min-h">Minimum counters</h2>
+          <p class="panel-note">Smallest number of counters that keeps the average wait under a threshold.</p>
+        </div>
+        <form id="minForm" novalidate>
+          <div class="field">
+            <label for="inMinP">Arrival probability (p)</label>
+            <select id="inMinP" name="p">
+              <option value="0.3">0.3 &mdash; moderate traffic</option>
+              <option value="0.6">0.6 &mdash; heavy traffic</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="inThreshold">Waiting-time threshold (minutes)</label>
+            <input type="number" id="inThreshold" name="threshold" min="0.1" step="0.5" value="5" inputmode="decimal" required>
+            <small class="field-error" id="errThreshold" role="alert"></small>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-secondary" id="minBtn">Find minimum</button>
+            <span class="form-status" id="minStatus" role="status" aria-live="polite"></span>
+          </div>
+        </form>
+        <div class="result-card" id="minResult" hidden>
+          <div class="result-figure"><span id="minValue">&mdash;</span><span class="result-figure-unit">counters</span></div>
+          <p class="result-text" id="minText"></p>
+        </div>
+      </section>
+    </div>
+
+    <!-- D. Experiment results -->
+    <section class="panel" aria-labelledby="exp-h">
+      <div class="panel-head">
+        <h2 id="exp-h">Experiment results</h2>
+        <p class="panel-note">The six reference configurations (p &isin; {0.3, 0.6}, k &isin; {1, 2, 3}), seed 42.</p>
+        <button type="button" class="btn btn-secondary btn-sm" id="reloadExp">Reload</button>
+      </div>
+      <div class="table-status" id="expStatus">Loading experiments&hellip;</div>
+      <div class="table-scroll">
+        <table class="data-table" id="expTable" hidden>
+          <caption class="visually-hidden">Simulation results for each probability and counter configuration</caption>
+          <thead>
+            <tr>
+              <th scope="col">Arrival p</th>
+              <th scope="col">Counters k</th>
+              <th scope="col" class="num">Arrived</th>
+              <th scope="col" class="num">Served</th>
+              <th scope="col" class="num">Avg wait (min)</th>
+              <th scope="col" class="num">Max queue</th>
+              <th scope="col" class="num">Remaining</th>
+            </tr>
+          </thead>
+          <tbody id="expBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- E. Data visualization -->
+    <section class="panel" aria-labelledby="viz-h">
+      <div class="panel-head">
+        <h2 id="viz-h">Visualizations</h2>
+        <p class="panel-note">Built from the experiment results above. Teal = p 0.3, amber = p 0.6.</p>
+      </div>
+      <div class="chart-legend" id="chartLegend" aria-hidden="true">
+        <span class="legend-item"><span class="legend-swatch" data-series="low"></span>p = 0.3</span>
+        <span class="legend-item"><span class="legend-swatch" data-series="high"></span>p = 0.6</span>
+      </div>
+      <div class="grid-2">
+        <figure class="chart-figure">
+          <figcaption>Average waiting time vs. counters</figcaption>
+          <div class="chart-host" id="chartWait"></div>
+        </figure>
+        <figure class="chart-figure">
+          <figcaption>Maximum queue length vs. counters</figcaption>
+          <div class="chart-host" id="chartQueue"></div>
+        </figure>
+      </div>
+    </section>
+
+    <!-- G. Methodology / about -->
+    <section class="panel" aria-labelledby="about-h">
+      <div class="panel-head">
+        <h2 id="about-h">Methodology</h2>
+      </div>
+      <div class="prose">
+        <p>The model simulates a bank open for a fixed number of minutes. Each minute, a customer arrives with probability <strong>p</strong>; arrivals wait in a first-in, first-out queue and are served by the first free counter. Each service lasts a random 2&ndash;8 minutes.</p>
+        <dl class="defs">
+          <dt>Arrival probability (p)</dt>
+          <dd>The per-minute chance that a new customer walks in. Higher p means a busier bank and more pressure on the queue.</dd>
+          <dt>Number of counters (k)</dt>
+          <dd>How many customers can be served in parallel. Each counter handles one customer at a time.</dd>
+          <dt>Average waiting time</dt>
+          <dd>The mean time, in minutes, that served customers spend queueing before service begins. A customer reaching an idle counter waits zero minutes.</dd>
+          <dt>Why more counters help</dt>
+          <dd>Additional counters raise the rate at which the queue is drained. Once the combined service rate exceeds the arrival rate, the queue stops growing and waiting time falls sharply&mdash;visible in the charts above.</dd>
+        </dl>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p>Bank Queue Simulation &middot; Python standard library backend &middot; discrete-event model, seed-reproducible.</p>
+    </div>
+  </footer>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
